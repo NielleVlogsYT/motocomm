@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MotoComm - Offline Intercom</title>
+    <style>
+        :root {
+            --bg-color: #121212; 
+            --card-bg: #181818; 
+            --accent-blue: #3b82f6;
+            --accent-green: #1DB954; 
+            --accent-red: #ef4444;
+            --text-main: #FFFFFF;
+            --text-muted: #b3b3b3; 
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+
+        body { background-color: var(--bg-color); color: var(--text-main); padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        .container { width: 100%; max-width: 450px; display: flex; flex-direction: column; gap: 20px; align-items: center; }
+        
+        /* Header */
+        header { text-align: center; padding: 10px 0; }
+        h1 { font-size: 28px; font-weight: 400; color: var(--text-main); }
+        h1 span { font-weight: 800; }
+        .subtitle { color: var(--text-muted); font-size: 13px; margin-top: 2px; }
+        #status { text-align: center; font-size: 13px; padding: 5px; color: var(--text-muted); font-weight: 600; margin-bottom: 10px; }
+
+        /* The Giant State Button */
+        .big-btn-container { display: flex; justify-content: center; align-items: center; margin: 10px 0 30px 0; }
+        #mainActionBtn {
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            background: transparent;
+            border: 8px solid var(--accent-green);
+            color: var(--accent-green);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+        #mainActionBtn:active { transform: scale(0.95); }
+        #mainActionBtn svg { margin-bottom: 5px; }
+        #btnLabel { font-size: 14px; font-weight: 700; letter-spacing: 0.5px; }
+
+        /* Sliders */
+        .sliders-container { width: 100%; padding: 0 10px; display: flex; flex-direction: column; gap: 15px; margin-bottom: 15px; }
+        .slider-row { display: flex; flex-direction: column; gap: 8px; }
+        .slider-label { font-size: 14px; font-weight: 500; color: var(--text-main); }
+        .slider-control { display: flex; align-items: center; gap: 10px; }
+        .slider-icon { color: var(--text-muted); display: flex; align-items: center; }
+        
+        input[type="range"] { flex: 1; height: 6px; background: #555; outline: none; -webkit-appearance: none; border-radius: 5px; cursor: pointer; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: white; transition: 0.1s; }
+        input[type="range"]:hover::-webkit-slider-thumb { background: var(--accent-green); transform: scale(1.2); }
+
+        /* File Loaders */
+        .file-loaders { display: flex; gap: 10px; justify-content: center; width: 100%; margin-bottom: 5px; }
+        input[type="file"] { display: none; }
+        .file-label { flex: 1; text-align: center; padding: 8px; border: 1px solid #444; border-radius: 50px; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--text-muted); transition: 0.2s; }
+        .file-label:hover { color: white; border-color: white; }
+        select { width: 100%; padding: 8px; margin-bottom: 10px; background-color: #282828; color: white; border: none; border-radius: 8px; outline: none; display: none; font-size: 12px; }
+
+        /* Spotify Player */
+        .spotify-player { width: 100%; background-color: var(--card-bg); border-radius: 12px; padding: 15px; }
+        .track-info { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; }
+        .album-art { width: 60px; height: 60px; background: linear-gradient(135deg, var(--accent-green), #121212); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        .track-details { flex: 1; overflow: hidden; }
+        .track-name { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
+        .track-artist { font-size: 13px; color: var(--text-muted); }
+
+        .media-controls { display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 10px; }
+        .ctrl-btn { background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; transition: color 0.2s; }
+        .ctrl-btn:hover { color: white; }
+        .ctrl-btn:disabled { color: #444; }
+        .play-btn { background-color: white; color: black; width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; padding-left: 4px; }
+        .play-btn.playing { padding-left: 0; font-size: 14px; } 
+        .play-btn:hover { transform: scale(1.05); background-color: var(--accent-green); }
+
+        .progress-container { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-muted); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Moto<span>Comm</span></h1>
+        <div class="subtitle">offline intercom and music sharing</div>
+    </header>
+
+    <div id="status">Status : Awaiting Power On...</div>
+
+    <div class="big-btn-container">
+        <button id="mainActionBtn">
+            <svg id="btnIcon" width="70" height="70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line>
+            </svg>
+            <div id="btnLabel">POWER</div>
+        </button>
+    </div>
+
+    <div class="sliders-container">
+        <div class="slider-row">
+            <span class="slider-label">Music:</span>
+            <div class="slider-control">
+                <input type="range" id="musicVolume" min="0" max="1" step="0.05" value="1">
+                <span id="musicVolVal" style="font-size: 12px; color: var(--text-muted); width: 35px; text-align: right;">100%</span>
+            </div>
+        </div>
+        <div class="slider-row">
+            <span class="slider-label">Microphone:</span>
+            <div class="slider-control">
+                <input type="range" id="micGain" min="0" max="2" step="0.1" value="1">
+                <span id="micGainVal" style="font-size: 12px; color: var(--text-muted); width: 35px; text-align: right;">100%</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="spotify-player">
+        <div class="file-loaders">
+            <label for="musicFile" class="file-label">Load Track 🎵</label>
+            <input type="file" id="musicFile" accept="audio/*">
+            <label for="musicFolder" class="file-label">Load Folder 📁</label>
+            <input type="file" id="musicFolder" webkitdirectory directory multiple>
+        </div>
+        <select id="playlist"></select>
+
+        <div class="track-info">
+            <div class="album-art">🏍️</div>
+            <div class="track-details">
+                <div id="trackNameDisplay" class="track-name">No track loaded</div>
+                <div class="track-artist">Local Storage</div>
+            </div>
+        </div>
+
+        <div class="media-controls">
+            <button id="prevBtn" class="ctrl-btn" disabled>⏮</button>
+            <button id="playPauseBtn" class="ctrl-btn play-btn" disabled>▶</button>
+            <button id="nextBtn" class="ctrl-btn" disabled>⏭</button>
+        </div>
+
+        <div class="progress-container">
+            <span id="currentTimeDisplay">0:00</span>
+            <input type="range" id="progressBar" value="0" max="100" step="0.1" disabled>
+            <span id="durationDisplay">0:00</span>
+        </div>
+        
+        <audio id="localAudioPlayer" style="display:none;" onended="playNextTrack()"></audio>
+    </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const socket = io();
+    
+    // Core Engine Variables
+    let audioCtx, micGainNode, musicGainNode, mixedDestNode;
+    let peerConnection, localStream, micSource;
+    let pendingCandidates = [];
+    
+    // State Machine logic
+    let systemState = 'POWER_OFF'; // POWER_OFF -> READY -> CALLING
+
+    // UI Elements
+    const mainActionBtn = document.getElementById('mainActionBtn');
+    const btnIcon = document.getElementById('btnIcon');
+    const btnLabel = document.getElementById('btnLabel');
+    const statusDiv = document.getElementById('status');
+    const musicVolumeSlider = document.getElementById('musicVolume');
+    const micGainSlider = document.getElementById('micGain');
+    
+    // SVG Icons
+    const iconPower = `<path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line>`;
+    const iconCall = `<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>`;
+    const iconHangup = `<path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"></path><line x1="23" y1="1" x2="1" y2="23"></line>`;
+
+    // ==========================================
+    // 1. DYNAMIC BUTTON CONTROLLER
+    // ==========================================
+    function updateButtonUI() {
+        if (systemState === 'POWER_OFF') {
+            mainActionBtn.style.borderColor = "var(--accent-green)";
+            mainActionBtn.style.color = "var(--accent-green)";
+            btnIcon.innerHTML = iconPower;
+            btnLabel.textContent = "POWER";
+        } else if (systemState === 'READY') {
+            mainActionBtn.style.borderColor = "var(--accent-blue)";
+            mainActionBtn.style.color = "var(--accent-blue)";
+            btnIcon.innerHTML = iconCall;
+            btnLabel.textContent = "CALL RIDER";
+        } else if (systemState === 'CALLING') {
+            mainActionBtn.style.borderColor = "var(--accent-red)";
+            mainActionBtn.style.color = "var(--accent-red)";
+            btnIcon.innerHTML = iconHangup;
+            btnLabel.textContent = "HANG UP";
+        }
+    }
+
+    mainActionBtn.onclick = async () => {
+        if (systemState === 'POWER_OFF') {
+            await powerOnHardware();
+        } else if (systemState === 'READY') {
+            await startCall();
+        } else if (systemState === 'CALLING') {
+            endCall();
+        }
+    };
+
+    // ==========================================
+    // 2. HARDWARE / WEBRTC LOGIC
+    // ==========================================
+    async function powerOnHardware() {
+        try {
+            statusDiv.textContent = "Status : Activating Hardware...";
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                mixedDestNode = audioCtx.createMediaStreamDestination();
+                
+                micGainNode = audioCtx.createGain();
+                micGainNode.gain.value = micGainSlider.value;
+                micGainNode.connect(mixedDestNode);
+
+                musicGainNode = audioCtx.createGain();
+                musicGainNode.gain.value = musicVolumeSlider.value;
+                
+                const musicSourceNode = audioCtx.createMediaElementSource(localAudioPlayer);
+                musicSourceNode.connect(musicGainNode);
+                musicGainNode.connect(mixedDestNode);
+                musicGainNode.connect(audioCtx.destination);
+            }
+            if (audioCtx.state === 'suspended') await audioCtx.resume();
+            if (!localStream) {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+                micSource = audioCtx.createMediaStreamSource(localStream);
+                micSource.connect(micGainNode);
+            }
+            systemState = 'READY';
+            statusDiv.textContent = "Status : Hardware Online.";
+            updateButtonUI();
+        } catch (err) {
+            console.error(err);
+            statusDiv.textContent = "Status : Error - Allow Mic!";
+        }
+    }
+
+    function createPeerConnection() {
+        peerConnection = new RTCPeerConnection({ iceServers: [] }); 
+        peerConnection.onicecandidate = (e) => { if (e.candidate) socket.emit('candidate', e.candidate); };
+        peerConnection.ontrack = (e) => {
+            const oldAudio = document.getElementById('remoteAudioElement');
+            if (oldAudio) oldAudio.remove();
+            const remoteAudio = document.createElement('audio');
+            remoteAudio.id = 'remoteAudioElement';
+            remoteAudio.srcObject = e.streams[0];
+            remoteAudio.autoplay = true;
+            document.body.appendChild(remoteAudio);
+            statusDiv.textContent = "Status : Connected! 🏍️";
+        };
+    }
+
+    async function startCall() {
+        statusDiv.textContent = "Status : Calling...";
+        createPeerConnection();
+        mixedDestNode.stream.getAudioTracks().forEach(track => peerConnection.addTrack(track, mixedDestNode.stream));
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        socket.emit('offer', offer);
+        
+        systemState = 'CALLING';
+        updateButtonUI();
+    }
+
+    function endCall() {
+        socket.emit('hangup');
+        executeHangup();
+    }
+
+    function executeHangup() {
+        if (peerConnection) {
+            peerConnection.close();
+            peerConnection = null;
+        }
+        pendingCandidates = [];
+        const remoteAudio = document.getElementById('remoteAudioElement');
+        if (remoteAudio) remoteAudio.remove();
+        
+        systemState = 'READY'; // Revert to Call Rider mode
+        statusDiv.textContent = "Status : Call Ended. Ready.";
+        updateButtonUI();
+    }
+
+    // Socket listeners
+    socket.on('offer', async (offer) => {
+        if (!localStream) {
+            statusDiv.textContent = "Status : Incoming... Press Power First!";
+            return;
+        }
+        statusDiv.textContent = "Status : Connecting...";
+        if (!peerConnection) createPeerConnection();
+        mixedDestNode.stream.getAudioTracks().forEach(t => peerConnection.addTrack(t, mixedDestNode.stream));
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+        while(pendingCandidates.length > 0) await peerConnection.addIceCandidate(pendingCandidates.shift());
+        
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+        socket.emit('answer', answer);
+        
+        systemState = 'CALLING';
+        updateButtonUI();
+    });
+
+    socket.on('answer', async (ans) => { 
+        if (peerConnection) {
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(ans)); 
+            while(pendingCandidates.length > 0) await peerConnection.addIceCandidate(pendingCandidates.shift());
+        }
+    });
+
+    socket.on('candidate', async (cand) => { 
+        if (peerConnection && peerConnection.remoteDescription && peerConnection.remoteDescription.type) {
+            await peerConnection.addIceCandidate(new RTCIceCandidate(cand)); 
+        } else {
+            pendingCandidates.push(new RTCIceCandidate(cand)); 
+        }
+    });
+
+    socket.on('hangup', () => { executeHangup(); });
+
+    // ==========================================
+    // 3. MUSIC PLAYER CONTROLS
+    // ==========================================
+    const localAudioPlayer = document.getElementById('localAudioPlayer');
+    const trackNameDisplay = document.getElementById('trackNameDisplay');
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const progressBar = document.getElementById('progressBar');
+    const currentTimeDisplay = document.getElementById('currentTimeDisplay');
+    const durationDisplay = document.getElementById('durationDisplay');
+    const playlistSelect = document.getElementById('playlist');
+
+    let audioFiles = [];
+    let currentTrackIndex = 0;
+
+    function formatTime(seconds) {
+        if (isNaN(seconds)) return "0:00";
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }
+
+    function loadTrack(index) {
+        if (!audioFiles[index]) return;
+        currentTrackIndex = index;
+        const cleanName = audioFiles[index].name.replace(/\.[^/.]+$/, "");
+        trackNameDisplay.textContent = cleanName;
+        localAudioPlayer.src = URL.createObjectURL(audioFiles[index]);
+        playPauseBtn.disabled = prevBtn.disabled = nextBtn.disabled = progressBar.disabled = false;
+        playlistSelect.value = index;
+    }
+
+    function playNextTrack() {
+        if (currentTrackIndex + 1 < audioFiles.length) { loadTrack(currentTrackIndex + 1); localAudioPlayer.play(); } 
+        else if (audioFiles.length > 0) { loadTrack(0); localAudioPlayer.play(); }
+    }
+
+    function playPreviousTrack() {
+        if (localAudioPlayer.currentTime > 3) localAudioPlayer.currentTime = 0;
+        else if (currentTrackIndex > 0) { loadTrack(currentTrackIndex - 1); localAudioPlayer.play(); } 
+        else if (audioFiles.length > 0) { loadTrack(audioFiles.length - 1); localAudioPlayer.play(); }
+    }
+
+    nextBtn.addEventListener('click', playNextTrack);
+    prevBtn.addEventListener('click', playPreviousTrack);
+
+    localAudioPlayer.addEventListener('timeupdate', () => {
+        const current = localAudioPlayer.currentTime;
+        const duration = localAudioPlayer.duration;
+        currentTimeDisplay.textContent = formatTime(current);
+        if (duration) {
+            durationDisplay.textContent = formatTime(duration);
+            progressBar.value = (current / duration) * 100;
+        }
+    });
+
+    progressBar.addEventListener('input', (e) => {
+        if (localAudioPlayer.duration) localAudioPlayer.currentTime = (e.target.value / 100) * localAudioPlayer.duration;
+    });
+
+    document.getElementById('musicFile').addEventListener('change', (e) => {
+        if (e.target.files[0]) { audioFiles = [e.target.files[0]]; playlistSelect.style.display = 'none'; loadTrack(0); }
+    });
+
+    document.getElementById('musicFolder').addEventListener('change', (e) => {
+        const files = Array.from(e.target.files).filter(f => f.type.startsWith('audio/'));
+        if (files.length > 0) {
+            audioFiles = files; playlistSelect.innerHTML = ''; 
+            files.forEach((f, i) => playlistSelect.appendChild(new Option(f.name.replace(/\.[^/.]+$/, ""), i)));
+            playlistSelect.style.display = 'block'; loadTrack(0);
+        }
+    });
+
+    playlistSelect.addEventListener('change', (e) => {
+        loadTrack(parseInt(e.target.value));
+        if (!localAudioPlayer.paused) localAudioPlayer.play();
+    });
+
+    playPauseBtn.addEventListener('click', () => {
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        localAudioPlayer.paused ? localAudioPlayer.play() : localAudioPlayer.pause();
+    });
+
+    localAudioPlayer.addEventListener('play', () => { playPauseBtn.textContent = '⏸'; playPauseBtn.classList.add('playing'); });
+    localAudioPlayer.addEventListener('pause', () => { playPauseBtn.textContent = '▶'; playPauseBtn.classList.remove('playing'); });
+
+    // Slider Listeners
+    musicVolumeSlider.addEventListener('input', (e) => {
+        if (musicGainNode) musicGainNode.gain.value = e.target.value;
+        document.getElementById('musicVolVal').textContent = Math.round(e.target.value * 100) + "%";
+    });
+
+    micGainSlider.addEventListener('input', (e) => {
+        if (micGainNode) micGainNode.gain.value = e.target.value;
+        document.getElementById('micGainVal').textContent = Math.round(e.target.value * 100) + "%";
+    });
+</script>
+</body>
+</html>3
